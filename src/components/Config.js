@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import * as S from 'semantic-ui-react'
 
-const CFG_KEY = 'CFG-v3';
+const CFG_KEY = 'CFG-v4';
 
 export let cfg;
 if (!localStorage.getItem(CFG_KEY)) {
@@ -13,7 +13,7 @@ if (!localStorage.getItem(CFG_KEY)) {
     sendEmail: true,
     download: true,
     longPress: false,
-    autoStopSecs: 3000
+    autoStopMins: 15
   };
 } else {
   cfg = JSON.parse(localStorage.getItem(CFG_KEY))
@@ -30,6 +30,12 @@ function Config({ open, onSave }) {
   return <S.Modal open={open}>
     <S.Modal.Content>
       <S.Modal.Description>
+        {!get.setup && <div>
+          <p><b>What is this?</b> Body cam is a video recorder than backs up your video as it is being recorded. In the event you lose your phone or it's destroyed while recording, the video captured so far will be sent to your email.</p>
+          <p><b>Who can access my video?</b> Your video is stored privately in the cloud while the recording takes place. It is deleted as soon as the email is sent.</p>
+          <p><b>Are there bugs?</b> Yes, this is still a proof-of-concept. For critical use cases, using your device's camera app may be a better idea.</p>
+          <hr/>
+        </div>}
         <S.Form>
           <S.Form.Field>
             <label>Name</label>
@@ -47,13 +53,14 @@ function Config({ open, onSave }) {
           <S.Form.Field
             control={S.Input}
             type='number'
-            max={60 * 60}
-            value={get.autoStopSecs}
-            onChange={(evt) => set.autoStopSecs(evt.target.value)}
-            label='Automatically stop recording and send after X seconds'
+            max={60 * 24}
+            value={get.autoStopMins}
+            onChange={(evt) => set.autoStopMins(evt.target.value)}
+            label='Automatically stop recording and send after X minutes'
           />
           <S.Button color='blue' onClick={() => {
             let newCfg = { ...get, setup: true };
+            Object.assign(cfg, newCfg);
             localStorage.setItem(CFG_KEY, JSON.stringify(newCfg));
             onSave(newCfg);
           }} type='submit'>Save</S.Button>

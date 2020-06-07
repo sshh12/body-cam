@@ -12,9 +12,14 @@ class App extends Component {
       recording: false,
       sock: true,
       configOpen: !cfg.setup,
-      config: cfg
+      config: cfg,
+      processing: false
     }
     this.playerRef = React.createRef();
+    this.id = null;
+    this.useOfflineBuffer = false;
+    this.vidChunks = null;
+    this.offlineBuffer = null;
   }
 
   componentDidMount() {
@@ -25,12 +30,40 @@ class App extends Component {
     let secure = ('https:' == window.location.protocol);
     let sockProto = (secure ? 'wss://' : 'ws://');
     this.socket = window.io.connect(sockProto + window.location.host, { secure: secure });
-    this.socket.on('start', () => {
+    this.socket.on('new', (id) => {
+      console.log(id);
       this.setState({ sock: true });
+      if (this.id != null && this.state.recording) {
+        this.patchRecordingOnReconnect();
+      } else {
+        this.id = id;
+        this.useOfflineBuffer = false;
+      }
     });
     this.socket.on('disconnect', () => {
       this.setState({ sock: false });
-    })
+      this.useOfflineBuffer = true;
+    });
+    this.socket.on('processing:start', () => {
+      this.setState({ processing: true })
+    });
+    this.socket.on('processing:end', () => {
+      this.setState({ processing: false })
+    });
+  }
+
+  patchRecordingOnReconnect() {
+    let { config } = this.state;
+    if (config.uploadWhile) {
+      this.socket.emit('start', JSON.stringify({ id: this.id, ...config }));
+      if (this.offlineBuffer.length > 0) {
+        let skippedBlob = new Blob(this.offlineBuffer, { type: this.offlineBuffer[0].type });
+        // This may be a race condition w/ondataavailable
+        this.socket.emit('stream', skippedBlob);
+      }
+      this.offlineBuffer = [];
+    }
+    this.useOfflineBuffer = false;
   }
 
   async startRecording() {
@@ -45,6 +78,7 @@ class App extends Component {
       alert(err);
     }
     this.vidChunks = [];
+    this.offlineBuffer = [];
     let videoPlayer = this.playerRef.current;
     videoPlayer.srcObject = this.stream;
     videoPlayer.onloadedmetadata = (evt) => {
@@ -58,11 +92,17 @@ class App extends Component {
     this.recorder.start(0);
     this.recorder.ondataavailable = async (evt) => {
       if (config.uploadWhile) {
-        this.socket.emit('stream', evt.data);
+        if (this.useOfflineBuffer) {
+          this.offlineBuffer.push(evt.data)
+        } else {
+          this.socket.emit('stream', evt.data);
+        }
       }
-      this.vidChunks.push(evt.data);
+      if (config.download) {
+        this.vidChunks.push(evt.data);
+      }
     };
-    this.autoStopInterval = setInterval(() => this.stopRecording(), parseInt(config.autoStopSecs) * 1000);
+    this.autoStopInterval = setInterval(() => this.stopRecording(), parseInt(config.autoStopMins) * 60 * 1000);
   }
 
   stopRecording() {
@@ -73,7 +113,7 @@ class App extends Component {
       this.socket.emit('stop');
     }
     this.recorder.stop();
-    this.stream.getVideoTracks()[0].stop();
+    this.stream.getTracks().forEach((track) => track.stop());
     if (config.download) {
       let localUrl = window.URL.createObjectURL(new Blob(this.vidChunks, { type: this.vidChunks[0].type }));
       let a = document.createElement("a");
@@ -86,14 +126,23 @@ class App extends Component {
     }
   }
 
+  renderConnStatus() {
+    let { sock, processing } = this.state;
+    if (sock) {
+      if (processing) {
+        return <S.Label style={styles.connProcLabel} as='a' content='Processing' icon='sync' />;
+      }
+      return <S.Label style={styles.connLabel} as='a' content='Connected' icon='wifi' />;
+    }
+    return <S.Label style={styles.connOffLabel} as='a' content='Offline' icon='wifi' />;
+  }
+
   render() {
     let { recording, sock, configOpen } = this.state;
     let [width, height] = [window.innerWidth, window.innerHeight];
     return (
       <div className="App">
-        {sock ?
-          <S.Label style={styles.connLabel} as='a' content='Connected' icon='wifi' /> :
-          <S.Label style={styles.connOffLabel} as='a' content='Offline' icon='wifi' />}
+        {this.renderConnStatus()}
         {!configOpen && !recording &&
           <S.Label style={styles.settingsLabel} as='a' content='' icon='settings' onClick={() => this.setState({ configOpen: true })} />}
         <video style={{ display: recording ? 'block' : 'hidden', height: `${height}px`, width: `${width}px` }} muted={true} ref={this.playerRef}></video>
@@ -126,6 +175,7 @@ const styles = {
   },
   connLabel: { zIndex: 99, position: 'absolute', backgroundColor: 'unset', color: 'green' },
   connOffLabel: { zIndex: 99, position: 'absolute', backgroundColor: 'unset', color: 'red' },
+  connProcLabel: { zIndex: 99, position: 'absolute', backgroundColor: 'unset', color: '#03dac6' },
   settingsLabel: {
     zIndex: 99, right: '0px',
     position: 'absolute', backgroundColor: 'unset',

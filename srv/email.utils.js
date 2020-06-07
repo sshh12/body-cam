@@ -5,7 +5,7 @@ const transport = nodemailer.createTransport(
   require('nodemailer-sendgrid')({apiKey: process.env.SG_KEY})
 );
 
-module.exports.sendVideo = async (emailAddr, videoFn) => {
+module.exports.sendVideo = async (emailAddr, videoFn, locals = {}) => {
   const email = new Email({
     message: {
       from: 'noreply@sshh.io',
@@ -26,6 +26,6 @@ module.exports.sendVideo = async (emailAddr, videoFn) => {
       message: {
         to: emailAddr
       },
-      locals: {}
+      locals: locals
     });
 };

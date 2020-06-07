@@ -23,9 +23,13 @@ io.on('connection', (sock) => {
     ioStream: null,
     outFn: path.join(os.tmpdir(), id + '.webm')
   };
-  sock.emit('start', JSON.stringify({ id: id }));
+  sock.emit('new', id);
   sock.on('start', (cfg) => {
     if(state.stream) return;
+    if(cfg.id) {
+      id = cfg.id.replace(/[^a-z\d\-]/g, '');
+      state.outFn = path.join(os.tmpdir(), id + '.webm');
+    }
     console.log(cfg);
     Object.assign(state, JSON.parse(cfg));
     state.stream = true;
@@ -40,12 +44,14 @@ io.on('connection', (sock) => {
     if (state.stream) {
       state.stream = false;
       state.ioStream.close();
+      sock.emit('processing:start');
       if(state.sendEmail) {
         let mp4Name = state.outFn.replace('.webm', '.mp4');
         await ffmpeg.covertToMp4(state.outFn, mp4Name);
-        await email.sendVideo(state.email, mp4Name);
+        await email.sendVideo(state.email, mp4Name, {name: state.name});
         fs.unlinkSync(mp4Name);
       }
+      sock.emit('processing:end');
       fs.unlinkSync(state.outFn);
     }
   }
