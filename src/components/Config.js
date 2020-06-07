@@ -22,10 +22,10 @@ if (!localStorage.getItem(CFG_KEY)) {
 function Config({ open, onSave }) {
   let set = {};
   let get = {};
-  for (let key in cfg) {
-    let [getter, setter] = useState(cfg[key]);
-    get[key] = getter;
-    set[key] = setter;
+  let [cfgState, setCfgState] = useState({...cfg});
+  for(let key in cfg) {
+    get[key] = cfgState[key];
+    set[key] = (val) => setCfgState({...cfgState, [key]: val});
   }
   return <S.Modal open={open}>
     <S.Modal.Content>
