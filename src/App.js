@@ -31,14 +31,17 @@ class App extends Component {
     let sockProto = (secure ? 'wss://' : 'ws://');
     this.socket = window.io.connect(sockProto + window.location.host, { secure: secure });
     this.socket.on('new', (id) => {
+      this.id = id;
       console.log(id);
       this.setState({ sock: true });
-      if (this.id != null && this.state.recording) {
+      if (this.state.recording) {
         this.patchRecordingOnReconnect();
       } else {
-        this.id = id;
         this.useOfflineBuffer = false;
       }
+    });
+    this.socket.on('error', (err) => {
+      alert('Oh no something went wrong: ' + err);
     });
     this.socket.on('disconnect', () => {
       this.setState({ sock: false });
@@ -55,7 +58,7 @@ class App extends Component {
   patchRecordingOnReconnect() {
     let { config } = this.state;
     if (config.uploadWhile) {
-      this.socket.emit('start', JSON.stringify({ id: this.id, ...config }));
+      this.socket.emit('start', JSON.stringify(config));
       if (this.offlineBuffer.length > 0) {
         let skippedBlob = new Blob(this.offlineBuffer, { type: this.offlineBuffer[0].type });
         // This may be a race condition w/ondataavailable

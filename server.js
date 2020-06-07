@@ -26,10 +26,6 @@ io.on('connection', (sock) => {
   sock.emit('new', id);
   sock.on('start', (cfg) => {
     if(state.stream) return;
-    if(cfg.id) {
-      id = cfg.id.replace(/[^a-z\d\-]/g, '');
-      state.outFn = path.join(os.tmpdir(), id + '.webm');
-    }
     console.log(cfg);
     Object.assign(state, JSON.parse(cfg));
     state.stream = true;
@@ -56,7 +52,12 @@ io.on('connection', (sock) => {
     }
   }
   sock.on('stop', () => {
-    endStream();
+    try {
+      endStream();
+    } catch (err) {
+      console.warn(err);
+      sock.emit('error', err);
+    }
   });
   sock.on('disconnect', () => {
     endStream();
