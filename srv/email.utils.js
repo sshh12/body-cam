@@ -1,6 +1,5 @@
 const Email = require('email-templates');
 const nodemailer = require('nodemailer');
-const nodemailerSendgrid = require('nodemailer-sendgrid');
 
 const transport = nodemailer.createTransport(
   require('nodemailer-sendgrid')({apiKey: process.env.SG_KEY})
