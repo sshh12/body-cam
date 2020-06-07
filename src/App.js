@@ -109,7 +109,6 @@ class App extends Component {
           color='red' size='massive' icon='record'></S.Button>}
         {streaming && <S.Button
           style={styles.bigBottomBtn} circular
-          disabled={!sock}
           onClick={() => this.stopStream()}
           color='yellow' size='massive' icon='stop'></S.Button>}
         <S.Modal open={settings}>
@@ -125,6 +124,7 @@ class App extends Component {
                   <input onChange={(evt) => this.setState({ email: evt.target.value })} placeholder='' />
                 </S.Form.Field>
                 <hr/>
+                <S.Form.Checkbox checked label='Send recording as email' />
                 <S.Form.Checkbox disabled checked label='Stream while recording' />
                 <S.Form.Checkbox label='Download to device' />
                 <S.Form.Checkbox label='Long press to stop recording' />
