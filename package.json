@@ -7,6 +7,7 @@
     "@testing-library/react": "^9.3.2",
     "@testing-library/user-event": "^7.1.2",
     "email-templates": "^7.0.5",
+    "node-fetch": "^2.6.0",
     "nodemailer-sendgrid": "^1.0.3",
     "pug": "^3.0.0",
     "react": "^16.13.1",
@@ -19,7 +20,8 @@
   "scripts": {
     "watch": "concurrently \"yarn watch:server\" \"yarn watch:client\"",
     "watch:client": "node watch.js",
-    "watch:server": "nodemon server.js"
+    "watch:server": "nodemon server.js",
+    "build": "react-scripts build"
   },
   "eslintConfig": {
     "extends": "react-app"

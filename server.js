@@ -5,6 +5,7 @@ const Email = require('email-templates');
 const nodemailer = require('nodemailer');
 const nodemailerSendgrid = require('nodemailer-sendgrid');
 const { v4: uuidv4 } = require('uuid');
+const fs = require('fs');
 
 const port = process.env.PORT || process.env.WEB_PORT || 5000;
 const host = process.env.WEB_HOST || '0.0.0.0';
@@ -48,7 +49,7 @@ let sendVideo = async (emailAddr, videoFn) => {
 
 io.on('connection', (sock) => {
   const id = uuidv4();
-  console.log('connected!');
+  console.log('[' + id + ']');
   let sockState = {
     video: false,
     ffmpeg: null
@@ -57,41 +58,28 @@ io.on('connection', (sock) => {
   sock.on('start', (data) => {
     Object.assign(sockState, JSON.parse(data));
     sockState.video = true;
-    let ops = [
-      '-i', '-',
-      '-c:v', 'libx264', '-preset', 'veryfast', '-tune', 'zerolatency',
-      '-c:a', 'aac', '-ar', '44100', '-b:a', '64k',
-      '-y',
-      '-use_wallclock_as_timestamps', '1',
-      '-async', '1',
-      '-bufsize', '1000',
-      '-f', 'flv', 'vidtmp/' + id + '.flv'
-    ];
-    console.log('STARTING');
-    sockState.ffmpeg = spawn('ffmpeg', ops);
-    sockState.ffmpeg.on('error', (err) => {
-      console.error(err);
-    });
+    console.log('[recording]');
+    sockState.vidStream = fs.createWriteStream('vidtmp/' + id + '.webm');
   });
   sock.on('stream', (data) => {
     if (sockState.video) {
-      sockState.ffmpeg.stdin.write(data);
+      sockState.vidStream.write(data);
     }
   });
   let endStream = () => {
-    console.log('STOPPING');
+    console.log('[stopped]');
     if (sockState.video) {
       sockState.video = false;
-      sockState.ffmpeg.kill('SIGINT');
-      let cvt = spawn('ffmpeg', ['-i', 'vidtmp/' + id + '.flv',
-        '-c:v', 'libx264', '-crf', '19', '-strict',
-        'experimental', '-y', 'vidtmp/' + id + '.mp4']);
+      sockState.vidStream.close();
+      let cvt = spawn('ffmpeg', ['-i', 'vidtmp/' + id + '.webm', 'vidtmp/' + id + '.mp4']);
       cvt.on('error', (err) => {
         console.error(err);
       });
       cvt.on('exit', (err) => {
         let { email } = sockState;
-        sendVideo(email, 'vidtmp/' + id + '.mp4');
+        console.log('[processed]', email);
+        fs.unlinkSync('vidtmp/' + id + '.webm');
+        // sendVideo(email, 'vidtmp/' + id + '.mp4');
       });
     }
   }
