@@ -2,6 +2,10 @@
 # body-cam
 > Backup videos as they are being recorded.
 
+![demo](https://user-images.githubusercontent.com/6625384/102697634-ee451180-41fc-11eb-86af-af8fb76a1c4f.gif)
+
+If the phone was critically damaged while recording, what was recorded up to that point will be automatically emailed to the user.
+
 ## Hosting
 ### Generic
 1. Install [ffmpeg](https://www.ffmpeg.org/download.html)
